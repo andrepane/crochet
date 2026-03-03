@@ -1,0 +1,121 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Crochet Counter</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">🧶</div>
+      <div>
+        <div class="title">Crochet Counter</div>
+        <div class="subtitle" id="subtitle">Proyectos</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button class="btn ghost" id="btnBack" type="button" hidden>Volver</button>
+      <button class="btn ghost" id="btnResetProject" type="button" hidden>Reiniciar</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- HOME / LISTA -->
+    <section id="viewHome" class="view">
+      <div class="card">
+        <h2>Proyectos</h2>
+        <p class="muted">Crea uno y usa el contador sin perderte.</p>
+
+        <form id="formNewProject" class="row" autocomplete="off">
+          <input class="input" id="projectName" type="text" placeholder="Nombre del proyecto (ej: Bola blanca)" />
+          <button class="btn primary" type="submit">Crear</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="row space-between">
+          <h3>Mis proyectos</h3>
+          <button class="btn ghost" id="btnClearAll" type="button">Borrar todo</button>
+        </div>
+        <div id="projectList" class="list"></div>
+        <p id="emptyProjects" class="muted" hidden>No hay proyectos todavía.</p>
+      </div>
+    </section>
+
+    <!-- PROJECT / CONTADOR -->
+    <section id="viewProject" class="view" hidden>
+      <div class="card">
+        <div class="row space-between align-start">
+          <div>
+            <h2 id="projectTitle">Proyecto</h2>
+            <p class="muted" id="projectMeta">Notas rápidas y ajustes</p>
+          </div>
+          <button class="btn danger" id="btnDeleteProject" type="button">Eliminar</button>
+        </div>
+
+        <div class="grid two">
+          <label class="field">
+            <span class="label">Total puntos por vuelta</span>
+            <input class="input" id="inputTotalStitches" type="number" min="0" step="1" />
+          </label>
+
+          <label class="field">
+            <span class="label">Notas</span>
+            <input class="input" id="inputNotes" type="text" placeholder="Ej: Hilo blanco, aguja 1.8mm..." />
+          </label>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="btnUndo" type="button">Deshacer</button>
+          <button class="btn ghost" id="btnAddMarker" type="button">Añadir marcador</button>
+          <button class="btn ghost" id="btnClearMarkers" type="button">Limpiar marcadores</button>
+        </div>
+      </div>
+
+      <div class="card big-counters">
+        <div class="counter-block">
+          <div class="counter-label">Vuelta</div>
+          <div class="counter-value" id="roundValue">1</div>
+          <div class="row">
+            <button class="btn" id="btnRoundMinus" type="button">-1</button>
+            <button class="btn primary" id="btnRoundPlus" type="button">+1</button>
+          </div>
+        </div>
+
+        <div class="counter-block">
+          <div class="counter-label">Puntos en la vuelta</div>
+          <div class="counter-value" id="stitchValue">0</div>
+          <div class="counter-sub" id="stitchSub">0 / 0</div>
+          <div class="row">
+            <button class="btn" id="btnStitchMinus" type="button">-1</button>
+            <button class="btn primary" id="btnStitchPlus" type="button">+1</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Marcadores</h3>
+        <p class="muted">Guarda puntos clave (inicio, aumentos, cambios de color…).</p>
+        <div id="markers" class="markers"></div>
+        <p id="markersEmpty" class="muted" hidden>No hay marcadores.</p>
+      </div>
+
+      <div class="card">
+        <h3>Historial (últimas acciones)</h3>
+        <div id="history" class="history"></div>
+        <p id="historyEmpty" class="muted" hidden>No hay acciones todavía.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer muted">
+    <span>v0.1 · localStorage · PWA luego</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
