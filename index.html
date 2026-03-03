@@ -1,9 +1,11 @@
-<!-- index.html -->
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#f6f5f2" />
   <title>Crochet Counter</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -24,14 +26,13 @@
   </header>
 
   <main class="container">
-    <!-- HOME / LISTA -->
     <section id="viewHome" class="view">
       <div class="card">
-        <h2>Proyectos</h2>
-        <p class="muted">Crea uno y usa el contador sin perderte.</p>
+        <h2>Crea tu proyecto</h2>
+        <p class="muted">Pantalla rápida pensada para usar con una mano mientras tejes.</p>
 
         <form id="formNewProject" class="row" autocomplete="off">
-          <input class="input" id="projectName" type="text" placeholder="Nombre del proyecto (ej: Bola blanca)" />
+          <input class="input" id="projectName" type="text" placeholder="Ej: Conejo rosa" />
           <button class="btn primary" type="submit">Crear</button>
         </form>
       </div>
@@ -46,74 +47,82 @@
       </div>
     </section>
 
-    <!-- PROJECT / CONTADOR -->
     <section id="viewProject" class="view" hidden>
-      <div class="card">
+      <div class="card compact">
         <div class="row space-between align-start">
           <div>
             <h2 id="projectTitle">Proyecto</h2>
-            <p class="muted" id="projectMeta">Notas rápidas y ajustes</p>
+            <p class="muted" id="projectMeta">Ritmo rápido para contar sin pensar.</p>
           </div>
           <button class="btn danger" id="btnDeleteProject" type="button">Eliminar</button>
         </div>
 
         <div class="grid two">
           <label class="field">
-            <span class="label">Total puntos por vuelta</span>
+            <span class="label">Puntos por vuelta</span>
             <input class="input" id="inputTotalStitches" type="number" min="0" step="1" />
           </label>
 
           <label class="field">
             <span class="label">Notas</span>
-            <input class="input" id="inputNotes" type="text" placeholder="Ej: Hilo blanco, aguja 1.8mm..." />
+            <input class="input" id="inputNotes" type="text" placeholder="Hilo, aguja, patrón..." />
           </label>
         </div>
 
-        <div class="row">
-          <button class="btn" id="btnUndo" type="button">Deshacer</button>
-          <button class="btn ghost" id="btnAddMarker" type="button">Añadir marcador</button>
-          <button class="btn ghost" id="btnClearMarkers" type="button">Limpiar marcadores</button>
-        </div>
+        <label class="toggle">
+          <input id="inputAutoRound" type="checkbox" />
+          <span>Auto-vuelta: al completar puntos, pasa de vuelta automáticamente</span>
+        </label>
       </div>
 
-      <div class="card big-counters">
-        <div class="counter-block">
-          <div class="counter-label">Vuelta</div>
-          <div class="counter-value" id="roundValue">1</div>
-          <div class="row">
-            <button class="btn" id="btnRoundMinus" type="button">-1</button>
-            <button class="btn primary" id="btnRoundPlus" type="button">+1</button>
+      <div class="card counter-main">
+        <div class="counter-head">
+          <div>
+            <div class="counter-label">Vuelta</div>
+            <div class="counter-value" id="roundValue">1</div>
+          </div>
+          <div>
+            <div class="counter-label">Puntos</div>
+            <div class="counter-value" id="stitchValue">0</div>
+            <div class="counter-sub" id="stitchSub">0 / 0</div>
           </div>
         </div>
 
-        <div class="counter-block">
-          <div class="counter-label">Puntos en la vuelta</div>
-          <div class="counter-value" id="stitchValue">0</div>
-          <div class="counter-sub" id="stitchSub">0 / 0</div>
-          <div class="row">
-            <button class="btn" id="btnStitchMinus" type="button">-1</button>
-            <button class="btn primary" id="btnStitchPlus" type="button">+1</button>
-          </div>
+        <div class="progress" aria-hidden="true">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <p class="muted progress-text" id="progressText">0% completado</p>
+
+        <div class="quick-grid">
+          <button class="tap-btn primary" id="btnStitchPlus" type="button">+1 Punto</button>
+          <button class="tap-btn" id="btnRoundPlus" type="button">+1 Vuelta</button>
+        </div>
+
+        <div class="row compact-row">
+          <button class="btn" id="btnStitchMinus" type="button">-1 punto</button>
+          <button class="btn" id="btnRoundMinus" type="button">-1 vuelta</button>
+          <button class="btn ghost" id="btnUndo" type="button">Deshacer</button>
+          <button class="btn ghost" id="btnAddMarker" type="button">Marcador</button>
         </div>
       </div>
 
-      <div class="card">
+      <details class="card compact">
+        <summary>Marcadores e historial</summary>
+
         <h3>Marcadores</h3>
-        <p class="muted">Guarda puntos clave (inicio, aumentos, cambios de color…).</p>
         <div id="markers" class="markers"></div>
         <p id="markersEmpty" class="muted" hidden>No hay marcadores.</p>
-      </div>
+        <button class="btn ghost" id="btnClearMarkers" type="button">Limpiar marcadores</button>
 
-      <div class="card">
         <h3>Historial (últimas acciones)</h3>
         <div id="history" class="history"></div>
         <p id="historyEmpty" class="muted" hidden>No hay acciones todavía.</p>
-      </div>
+      </details>
     </section>
   </main>
 
   <footer class="footer muted">
-    <span>v0.1 · localStorage · PWA luego</span>
+    <span>Modo iPhone · toque grande · localStorage</span>
   </footer>
 
   <script src="app.js"></script>
