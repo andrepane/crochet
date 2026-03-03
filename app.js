@@ -84,6 +84,18 @@
   const inputTotalStitches = $("#inputTotalStitches");
   const inputNotes = $("#inputNotes");
   const inputAutoRound = $("#inputAutoRound");
+  const inputHookSize = $("#inputHookSize");
+  const inputYarn = $("#inputYarn");
+  const inputGauge = $("#inputGauge");
+  const inputMeasurements = $("#inputMeasurements");
+  const inputTechniques = $("#inputTechniques");
+
+  const roundPlanSummary = $("#roundPlanSummary");
+  const inputRoundTarget = $("#inputRoundTarget");
+  const inputRoundMode = $("#inputRoundMode");
+  const inputRoundIncrease = $("#inputRoundIncrease");
+  const inputRoundDecrease = $("#inputRoundDecrease");
+  const inputRoundPattern = $("#inputRoundPattern");
 
   const btnUndo = $("#btnUndo");
   const btnAddMarker = $("#btnAddMarker");
@@ -105,6 +117,23 @@
 
   const history = $("#history");
   const historyEmpty = $("#historyEmpty");
+
+  function ensureProjectShape(project) {
+    project.projectSpecs ||= { hookSize: "", yarn: "", gauge: "", measurements: "", techniques: "" };
+    project.roundPlan ||= [];
+    if (!Array.isArray(project.roundPlan)) project.roundPlan = [];
+  }
+
+  function getRoundPlanEntry(project, round) {
+    ensureProjectShape(project);
+    return project.roundPlan.find((entry) => entry.round === round) || null;
+  }
+
+  function getEffectiveTotal(project) {
+    const entry = getRoundPlanEntry(project, project.round || 1);
+    if (entry && typeof entry.targetStitches === "number" && entry.targetStitches > 0) return entry.targetStitches;
+    return typeof project.totalStitches === "number" ? project.totalStitches : 0;
+  }
 
   function showHome() {
     state.activeProjectId = null;
@@ -185,18 +214,41 @@
   function renderProject() {
     const p = getActiveProject();
     if (!p) return showHome();
+    ensureProjectShape(p);
 
     subtitle.textContent = "Contador rápido";
     projectTitle.textContent = p.name || "Proyecto";
     projectMeta.textContent = p.notes ? `Notas: ${p.notes}` : "Toques grandes para contar rápido.";
 
-    const total = typeof p.totalStitches === "number" ? p.totalStitches : 0;
     const round = typeof p.round === "number" ? p.round : 1;
+    const total = getEffectiveTotal(p);
     const stitch = typeof p.stitch === "number" ? p.stitch : 0;
+    const roundEntry = getRoundPlanEntry(p, round);
 
-    inputTotalStitches.value = String(total);
+    inputTotalStitches.value = String(typeof p.totalStitches === "number" ? p.totalStitches : 0);
     inputNotes.value = p.notes || "";
     inputAutoRound.checked = Boolean(p.autoRound);
+
+    inputHookSize.value = p.projectSpecs.hookSize || "";
+    inputYarn.value = p.projectSpecs.yarn || "";
+    inputGauge.value = p.projectSpecs.gauge || "";
+    inputMeasurements.value = p.projectSpecs.measurements || "";
+    inputTechniques.value = p.projectSpecs.techniques || "";
+
+    inputRoundTarget.value = String(roundEntry?.targetStitches || "");
+    inputRoundMode.value = roundEntry?.mode || "";
+    inputRoundIncrease.value = roundEntry?.increase || "";
+    inputRoundDecrease.value = roundEntry?.decrease || "";
+    inputRoundPattern.value = roundEntry?.pattern || "";
+
+    const summaryParts = [];
+    if (roundEntry?.targetStitches) summaryParts.push(`${roundEntry.targetStitches} puntos`);
+    if (roundEntry?.increase) summaryParts.push(`Aum: ${roundEntry.increase}`);
+    if (roundEntry?.decrease) summaryParts.push(`Dism: ${roundEntry.decrease}`);
+    if (roundEntry?.mode) summaryParts.push(`Modo: ${roundEntry.mode}`);
+    roundPlanSummary.textContent = summaryParts.length
+      ? `Vuelta ${round}: ${summaryParts.join(" · ")}`
+      : `Vuelta ${round}: sin plan guardado. Define puntos y patrón para avanzar con seguridad.`;
 
     roundValue.textContent = String(round);
     stitchValue.textContent = String(stitch);
@@ -204,7 +256,9 @@
 
     const percent = total > 0 ? Math.round((stitch / total) * 100) : 0;
     progressFill.style.width = `${percent}%`;
-    progressText.textContent = total > 0 ? `${percent}% completado` : "Define puntos por vuelta para ver progreso";
+    progressText.textContent = total > 0
+      ? `${percent}% completado${roundEntry?.pattern ? ` · ${roundEntry.pattern}` : ""}`
+      : "Define puntos por vuelta o un plan por vuelta para ver progreso";
 
     const list = Array.isArray(p.markers) ? p.markers : [];
     markers.innerHTML = "";
@@ -274,6 +328,14 @@
       autoRound: true,
       markers: [],
       notes: "",
+      projectSpecs: {
+        hookSize: "",
+        yarn: "",
+        gauge: "",
+        measurements: "",
+        techniques: "",
+      },
+      roundPlan: [],
       undoStack: [],
       history: [],
       createdAt: Date.now(),
@@ -335,7 +397,7 @@
     if (!p) return;
 
     applyProjectUpdate((proj) => {
-      const total = typeof proj.totalStitches === "number" ? proj.totalStitches : 0;
+      const total = getEffectiveTotal(proj);
       pushUndo(proj, { type: "set", prev: { stitch: proj.stitch, round: proj.round } });
 
       if (delta > 0 && total > 0 && proj.autoRound) {
@@ -350,6 +412,50 @@
       }
     }, delta > 0 ? "Punto +1" : "Punto -1");
     vibrate();
+  }
+
+  function setProjectSpec(field, value) {
+    const next = String(value ?? "").trim();
+    applyProjectUpdate((proj) => {
+      ensureProjectShape(proj);
+      pushUndo(proj, { type: "set", prev: { projectSpecs: structuredClone(proj.projectSpecs) } });
+      proj.projectSpecs[field] = next;
+    }, `Ficha actualizada: ${field}`);
+  }
+
+  function setRoundPlanForCurrentRound(patch) {
+    const p = getActiveProject();
+    if (!p) return;
+
+    applyProjectUpdate((proj) => {
+      ensureProjectShape(proj);
+      const round = proj.round || 1;
+      const idx = proj.roundPlan.findIndex((entry) => entry.round === round);
+      const prev = structuredClone(proj.roundPlan);
+      const current = idx >= 0
+        ? { ...proj.roundPlan[idx] }
+        : { round, targetStitches: 0, mode: "", increase: "", decrease: "", pattern: "" };
+
+      if (Object.hasOwn(patch, "targetStitches")) current.targetStitches = patch.targetStitches;
+      if (Object.hasOwn(patch, "mode")) current.mode = patch.mode;
+      if (Object.hasOwn(patch, "increase")) current.increase = patch.increase;
+      if (Object.hasOwn(patch, "decrease")) current.decrease = patch.decrease;
+      if (Object.hasOwn(patch, "pattern")) current.pattern = patch.pattern;
+
+      const isEmpty = !current.targetStitches && !current.mode && !current.increase && !current.decrease && !current.pattern;
+      if (isEmpty) {
+        proj.roundPlan = proj.roundPlan.filter((entry) => entry.round !== round);
+      } else if (idx >= 0) {
+        proj.roundPlan[idx] = current;
+      } else {
+        proj.roundPlan.push(current);
+        proj.roundPlan.sort((a, b) => a.round - b.round);
+      }
+
+      pushUndo(proj, { type: "set", prev: { roundPlan: prev } });
+      const max = getEffectiveTotal(proj);
+      if (max > 0) proj.stitch = clampInt(proj.stitch || 0, 0, max);
+    }, "Plan de vuelta actualizado");
   }
 
   function setTotalStitches(value) {
@@ -434,6 +540,21 @@
   inputTotalStitches.addEventListener("change", (e) => setTotalStitches(e.target.value));
   inputNotes.addEventListener("change", (e) => setNotes(e.target.value));
   inputAutoRound.addEventListener("change", (e) => setAutoRound(e.target.checked));
+  inputHookSize.addEventListener("change", (e) => setProjectSpec("hookSize", e.target.value));
+  inputYarn.addEventListener("change", (e) => setProjectSpec("yarn", e.target.value));
+  inputGauge.addEventListener("change", (e) => setProjectSpec("gauge", e.target.value));
+  inputMeasurements.addEventListener("change", (e) => setProjectSpec("measurements", e.target.value));
+  inputTechniques.addEventListener("change", (e) => setProjectSpec("techniques", e.target.value));
+
+  inputRoundTarget.addEventListener("change", (e) => {
+    const n = Number(e.target.value);
+    const target = Number.isFinite(n) ? clampInt(Math.floor(n), 0, 999999) : 0;
+    setRoundPlanForCurrentRound({ targetStitches: target });
+  });
+  inputRoundMode.addEventListener("change", (e) => setRoundPlanForCurrentRound({ mode: String(e.target.value || "") }));
+  inputRoundIncrease.addEventListener("change", (e) => setRoundPlanForCurrentRound({ increase: String(e.target.value || "").trim() }));
+  inputRoundDecrease.addEventListener("change", (e) => setRoundPlanForCurrentRound({ decrease: String(e.target.value || "").trim() }));
+  inputRoundPattern.addEventListener("change", (e) => setRoundPlanForCurrentRound({ pattern: String(e.target.value || "").trim() }));
 
   window.addEventListener("keydown", (e) => {
     if (viewProject.hidden) return;

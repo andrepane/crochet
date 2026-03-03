@@ -73,6 +73,63 @@
           <input id="inputAutoRound" type="checkbox" />
           <span>Auto-vuelta: al completar puntos, pasa de vuelta automáticamente</span>
         </label>
+
+        <h3>Ficha del proyecto (recomendado)</h3>
+        <div class="grid two">
+          <label class="field">
+            <span class="label">Aguja</span>
+            <input class="input" id="inputHookSize" type="text" placeholder="Ej: 3.5 mm" />
+          </label>
+          <label class="field">
+            <span class="label">Hilo</span>
+            <input class="input" id="inputYarn" type="text" placeholder="Marca, grosor y color" />
+          </label>
+          <label class="field">
+            <span class="label">Tensión / muestra</span>
+            <input class="input" id="inputGauge" type="text" placeholder="Ej: 18 pb x 20 vtas = 10cm" />
+          </label>
+          <label class="field">
+            <span class="label">Medidas objetivo</span>
+            <input class="input" id="inputMeasurements" type="text" placeholder="Ej: alto 20cm" />
+          </label>
+          <label class="field span-2">
+            <span class="label">Materiales y técnicas</span>
+            <input class="input" id="inputTechniques" type="text" placeholder="Relleno, ojos de seguridad, BLO/FLO, cambios de color..." />
+          </label>
+        </div>
+      </div>
+
+      <div class="card compact">
+        <h3>Plan por vuelta</h3>
+        <p class="muted" id="roundPlanSummary">Define la vuelta actual para saber puntos, aumentos y forma de tejer.</p>
+
+        <div class="grid two">
+          <label class="field">
+            <span class="label">Puntos objetivo en esta vuelta</span>
+            <input class="input" id="inputRoundTarget" type="number" min="0" step="1" />
+          </label>
+          <label class="field">
+            <span class="label">Tipo de trabajo</span>
+            <select class="input" id="inputRoundMode">
+              <option value="">Sin definir</option>
+              <option value="espiral">Espiral</option>
+              <option value="redondo">En redondo (cerrando vuelta)</option>
+              <option value="recto">Recto (ida y vuelta)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="label">Aumentos</span>
+            <input class="input" id="inputRoundIncrease" type="text" placeholder="Ej: 1 aum cada 3 puntos" />
+          </label>
+          <label class="field">
+            <span class="label">Disminuciones</span>
+            <input class="input" id="inputRoundDecrease" type="text" placeholder="Ej: 1 dism cada 4 puntos" />
+          </label>
+          <label class="field span-2">
+            <span class="label">Patrón de la vuelta</span>
+            <textarea class="input" id="inputRoundPattern" rows="3" placeholder="Ej: (2 pb, 1 aum) x 6"></textarea>
+          </label>
+        </div>
       </div>
 
       <div class="card counter-main">
