@@ -1,10 +1,9 @@
-// app.js
 (() => {
-  const STORAGE_KEY = "crochet_counter_v01";
+  const STORAGE_KEY = "crochet_counter_v02";
 
-  // ---------- Helpers ----------
   const $ = (sel) => document.querySelector(sel);
   const clampInt = (n, min, max) => Math.max(min, Math.min(max, n));
+  const vibrate = () => { if (navigator.vibrate) navigator.vibrate(12); };
 
   const nowTime = () => {
     const d = new Date();
@@ -13,11 +12,7 @@
     return `${hh}:${mm}`;
   };
 
-  // ---------- State ----------
-  const defaultState = {
-    projects: [],
-    activeProjectId: null,
-  };
+  const defaultState = { projects: [], activeProjectId: null };
 
   function loadState() {
     try {
@@ -42,10 +37,9 @@
   }
 
   function getActiveProject() {
-    return state.projects.find(p => p.id === state.activeProjectId) || null;
+    return state.projects.find((p) => p.id === state.activeProjectId) || null;
   }
 
-  // ---------- Undo system (per project) ----------
   function pushUndo(project, patch) {
     project.undoStack ||= [];
     project.undoStack.push(patch);
@@ -58,19 +52,18 @@
     if (project.history.length > 30) project.history.pop();
   }
 
-  function applyProjectUpdate(fn, undoPatch, historyText) {
+  function applyProjectUpdate(fn, historyText) {
     const project = getActiveProject();
     if (!project) return;
 
-    if (undoPatch) pushUndo(project, undoPatch);
     fn(project);
     if (historyText) addHistory(project, historyText);
+    project.updatedAt = Date.now();
 
     saveState();
     renderProject();
   }
 
-  // ---------- UI refs ----------
   const viewHome = $("#viewHome");
   const viewProject = $("#viewProject");
 
@@ -78,20 +71,19 @@
   const btnBack = $("#btnBack");
   const btnResetProject = $("#btnResetProject");
 
-  // Home
   const formNewProject = $("#formNewProject");
   const projectName = $("#projectName");
   const projectList = $("#projectList");
   const emptyProjects = $("#emptyProjects");
   const btnClearAll = $("#btnClearAll");
 
-  // Project
   const projectTitle = $("#projectTitle");
   const projectMeta = $("#projectMeta");
   const btnDeleteProject = $("#btnDeleteProject");
 
   const inputTotalStitches = $("#inputTotalStitches");
   const inputNotes = $("#inputNotes");
+  const inputAutoRound = $("#inputAutoRound");
 
   const btnUndo = $("#btnUndo");
   const btnAddMarker = $("#btnAddMarker");
@@ -100,6 +92,8 @@
   const roundValue = $("#roundValue");
   const stitchValue = $("#stitchValue");
   const stitchSub = $("#stitchSub");
+  const progressFill = $("#progressFill");
+  const progressText = $("#progressText");
 
   const btnRoundMinus = $("#btnRoundMinus");
   const btnRoundPlus = $("#btnRoundPlus");
@@ -112,39 +106,30 @@
   const history = $("#history");
   const historyEmpty = $("#historyEmpty");
 
-  // ---------- Navigation ----------
   function showHome() {
     state.activeProjectId = null;
     saveState();
-
     viewProject.hidden = true;
     viewHome.hidden = false;
-
     btnBack.hidden = true;
     btnResetProject.hidden = true;
     subtitle.textContent = "Proyectos";
-
     renderHome();
   }
 
   function showProject(id) {
     state.activeProjectId = id;
     saveState();
-
     viewHome.hidden = true;
     viewProject.hidden = false;
-
     btnBack.hidden = false;
     btnResetProject.hidden = false;
-
     renderProject();
   }
 
-  // ---------- Render ----------
   function renderHome() {
-    const list = state.projects.slice().sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const list = state.projects.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     projectList.innerHTML = "";
-
     emptyProjects.hidden = list.length !== 0;
 
     for (const p of list) {
@@ -160,9 +145,9 @@
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      const total = (typeof p.totalStitches === "number") ? p.totalStitches : 0;
-      const r = (typeof p.round === "number") ? p.round : 1;
-      const s = (typeof p.stitch === "number") ? p.stitch : 0;
+      const total = typeof p.totalStitches === "number" ? p.totalStitches : 0;
+      const r = typeof p.round === "number" ? p.round : 1;
+      const s = typeof p.stitch === "number" ? p.stitch : 0;
       meta.textContent = `Vuelta ${r} · Punto ${s}/${total}`;
 
       left.appendChild(name);
@@ -182,9 +167,8 @@
       btnDel.type = "button";
       btnDel.textContent = "Eliminar";
       btnDel.addEventListener("click", () => {
-        const ok = confirm(`¿Eliminar "${p.name}"?`);
-        if (!ok) return;
-        state.projects = state.projects.filter(x => x.id !== p.id);
+        if (!confirm(`¿Eliminar "${p.name}"?`)) return;
+        state.projects = state.projects.filter((x) => x.id !== p.id);
         if (state.activeProjectId === p.id) state.activeProjectId = null;
         saveState();
         renderHome();
@@ -192,7 +176,6 @@
 
       right.appendChild(btnOpen);
       right.appendChild(btnDel);
-
       el.appendChild(left);
       el.appendChild(right);
       projectList.appendChild(el);
@@ -203,22 +186,26 @@
     const p = getActiveProject();
     if (!p) return showHome();
 
-    subtitle.textContent = "Proyecto";
+    subtitle.textContent = "Contador rápido";
     projectTitle.textContent = p.name || "Proyecto";
-    projectMeta.textContent = p.notes ? `Notas: ${p.notes}` : "Sin notas (aquí puedes poner aguja, hilo, etc.)";
+    projectMeta.textContent = p.notes ? `Notas: ${p.notes}` : "Toques grandes para contar rápido.";
 
-    const total = (typeof p.totalStitches === "number") ? p.totalStitches : 0;
-    const round = (typeof p.round === "number") ? p.round : 1;
-    const stitch = (typeof p.stitch === "number") ? p.stitch : 0;
+    const total = typeof p.totalStitches === "number" ? p.totalStitches : 0;
+    const round = typeof p.round === "number" ? p.round : 1;
+    const stitch = typeof p.stitch === "number" ? p.stitch : 0;
 
     inputTotalStitches.value = String(total);
     inputNotes.value = p.notes || "";
+    inputAutoRound.checked = Boolean(p.autoRound);
 
     roundValue.textContent = String(round);
     stitchValue.textContent = String(stitch);
     stitchSub.textContent = `${stitch} / ${total}`;
 
-    // markers
+    const percent = total > 0 ? Math.round((stitch / total) * 100) : 0;
+    progressFill.style.width = `${percent}%`;
+    progressText.textContent = total > 0 ? `${percent}% completado` : "Define puntos por vuelta para ver progreso";
+
     const list = Array.isArray(p.markers) ? p.markers : [];
     markers.innerHTML = "";
     markersEmpty.hidden = list.length !== 0;
@@ -232,9 +219,7 @@
       left.innerHTML = `<strong>V${m.round}</strong> · punto ${m.stitch}${m.note ? ` · <span class="muted">${escapeHtml(m.note)}</span>` : ""}`;
 
       const right = document.createElement("div");
-      right.style.display = "flex";
-      right.style.gap = "10px";
-      right.style.alignItems = "center";
+      right.className = "row";
 
       const pill = document.createElement("span");
       pill.className = "pill";
@@ -245,22 +230,20 @@
       btnX.type = "button";
       btnX.textContent = "Quitar";
       btnX.addEventListener("click", () => {
-        applyProjectUpdate(
-          (proj) => { proj.markers.splice(i, 1); proj.updatedAt = Date.now(); },
-          { type: "markers_restore", value: structuredClone(list) },
-          "Marcador eliminado"
-        );
+        applyProjectUpdate((proj) => {
+          const prev = structuredClone(proj.markers);
+          proj.markers.splice(i, 1);
+          pushUndo(proj, { type: "markers_restore", value: prev });
+        }, "Marcador eliminado");
       });
 
       right.appendChild(pill);
       right.appendChild(btnX);
-
       row.appendChild(left);
       row.appendChild(right);
       markers.appendChild(row);
     }
 
-    // history
     const h = Array.isArray(p.history) ? p.history : [];
     history.innerHTML = "";
     historyEmpty.hidden = h.length !== 0;
@@ -281,7 +264,6 @@
       .replaceAll("'", "&#039;");
   }
 
-  // ---------- Actions ----------
   function createProject(name) {
     const p = {
       id: uid(),
@@ -289,6 +271,7 @@
       round: 1,
       stitch: 0,
       totalStitches: 0,
+      autoRound: true,
       markers: [],
       notes: "",
       undoStack: [],
@@ -303,10 +286,8 @@
 
   function deleteActiveProject() {
     const p = getActiveProject();
-    if (!p) return;
-    const ok = confirm(`¿Eliminar "${p.name}"?`);
-    if (!ok) return;
-    state.projects = state.projects.filter(x => x.id !== p.id);
+    if (!p || !confirm(`¿Eliminar "${p.name}"?`)) return;
+    state.projects = state.projects.filter((x) => x.id !== p.id);
     state.activeProjectId = null;
     saveState();
     showHome();
@@ -314,22 +295,15 @@
 
   function resetActiveProject() {
     const p = getActiveProject();
-    if (!p) return;
-    const ok = confirm("¿Reiniciar contadores, marcadores e historial de este proyecto?");
-    if (!ok) return;
+    if (!p || !confirm("¿Reiniciar contadores, marcadores e historial de este proyecto?")) return;
 
-    applyProjectUpdate(
-      (proj) => {
-        proj.round = 1;
-        proj.stitch = 0;
-        proj.markers = [];
-        proj.history = [];
-        proj.undoStack = [];
-        proj.updatedAt = Date.now();
-      },
-      null,
-      null
-    );
+    applyProjectUpdate((proj) => {
+      proj.round = 1;
+      proj.stitch = 0;
+      proj.markers = [];
+      proj.history = [];
+      proj.undoStack = [];
+    }, null);
   }
 
   function undo() {
@@ -337,138 +311,100 @@
     if (!p || !Array.isArray(p.undoStack) || p.undoStack.length === 0) return;
 
     const patch = p.undoStack.pop();
-    applyProjectUpdate(
-      (proj) => {
-        if (patch.type === "set") {
-          for (const [k, v] of Object.entries(patch.prev)) proj[k] = v;
-        } else if (patch.type === "markers_restore") {
-          proj.markers = patch.value || [];
-        }
-        proj.updatedAt = Date.now();
-      },
-      null,
-      "Deshacer"
-    );
+    applyProjectUpdate((proj) => {
+      if (patch.type === "set") {
+        for (const [k, v] of Object.entries(patch.prev)) proj[k] = v;
+      } else if (patch.type === "markers_restore") {
+        proj.markers = patch.value || [];
+      }
+    }, "Deshacer");
+    vibrate();
   }
 
   function bumpRound(delta) {
-    const p = getActiveProject();
-    if (!p) return;
-
-    applyProjectUpdate(
-      (proj) => {
-        const prev = { round: proj.round, stitch: proj.stitch };
-        const nextRound = clampInt((proj.round || 1) + delta, 1, 999999);
-        proj.round = nextRound;
-
-        // Si cambias de vuelta, lo normal es volver a 0 puntos (lo hago automático).
-        proj.stitch = 0;
-
-        proj.updatedAt = Date.now();
-        pushUndo(proj, { type: "set", prev });
-      },
-      null,
-      delta > 0 ? "Vuelta +1 (puntos a 0)" : "Vuelta -1 (puntos a 0)"
-    );
+    applyProjectUpdate((proj) => {
+      pushUndo(proj, { type: "set", prev: { round: proj.round, stitch: proj.stitch } });
+      proj.round = clampInt((proj.round || 1) + delta, 1, 999999);
+      proj.stitch = 0;
+    }, delta > 0 ? "Vuelta +1 (puntos a 0)" : "Vuelta -1 (puntos a 0)");
+    vibrate();
   }
 
   function bumpStitch(delta) {
     const p = getActiveProject();
     if (!p) return;
 
-    const total = typeof p.totalStitches === "number" ? p.totalStitches : 0;
-    const max = total > 0 ? total : 999999;
+    applyProjectUpdate((proj) => {
+      const total = typeof proj.totalStitches === "number" ? proj.totalStitches : 0;
+      pushUndo(proj, { type: "set", prev: { stitch: proj.stitch, round: proj.round } });
 
-    applyProjectUpdate(
-      (proj) => {
-        const prev = { stitch: proj.stitch };
-        const next = clampInt((proj.stitch || 0) + delta, 0, max);
-        proj.stitch = next;
-        proj.updatedAt = Date.now();
-        pushUndo(proj, { type: "set", prev });
-      },
-      null,
-      delta > 0 ? "Punto +1" : "Punto -1"
-    );
+      if (delta > 0 && total > 0 && proj.autoRound) {
+        const sum = (proj.stitch || 0) + delta;
+        const addRounds = Math.floor((sum - 1) / total);
+        const newStitch = ((sum - 1) % total) + 1;
+        if (addRounds > 0) proj.round = clampInt((proj.round || 1) + addRounds, 1, 999999);
+        proj.stitch = newStitch;
+      } else {
+        const max = total > 0 ? total : 999999;
+        proj.stitch = clampInt((proj.stitch || 0) + delta, 0, max);
+      }
+    }, delta > 0 ? "Punto +1" : "Punto -1");
+    vibrate();
   }
 
   function setTotalStitches(value) {
-    const p = getActiveProject();
-    if (!p) return;
     const n = Number(value);
     const clean = Number.isFinite(n) ? clampInt(Math.floor(n), 0, 999999) : 0;
 
-    applyProjectUpdate(
-      (proj) => {
-        const prev = { totalStitches: proj.totalStitches, stitch: proj.stitch };
-        proj.totalStitches = clean;
-
-        // Ajusta stitch si se sale
-        if (clean > 0) proj.stitch = clampInt(proj.stitch || 0, 0, clean);
-        proj.updatedAt = Date.now();
-        pushUndo(proj, { type: "set", prev });
-      },
-      null,
-      `Total puntos por vuelta: ${clean}`
-    );
+    applyProjectUpdate((proj) => {
+      pushUndo(proj, { type: "set", prev: { totalStitches: proj.totalStitches, stitch: proj.stitch } });
+      proj.totalStitches = clean;
+      if (clean > 0) proj.stitch = clampInt(proj.stitch || 0, 0, clean);
+    }, `Total puntos por vuelta: ${clean}`);
   }
 
   function setNotes(value) {
-    const p = getActiveProject();
-    if (!p) return;
-
     const next = String(value ?? "");
+    applyProjectUpdate((proj) => {
+      pushUndo(proj, { type: "set", prev: { notes: proj.notes } });
+      proj.notes = next;
+    }, "Notas actualizadas");
+  }
 
-    applyProjectUpdate(
-      (proj) => {
-        const prev = { notes: proj.notes };
-        proj.notes = next;
-        proj.updatedAt = Date.now();
-        pushUndo(proj, { type: "set", prev });
-      },
-      null,
-      "Notas actualizadas"
-    );
+  function setAutoRound(value) {
+    applyProjectUpdate((proj) => {
+      pushUndo(proj, { type: "set", prev: { autoRound: proj.autoRound } });
+      proj.autoRound = Boolean(value);
+    }, value ? "Auto-vuelta activada" : "Auto-vuelta desactivada");
   }
 
   function addMarker() {
     const p = getActiveProject();
     if (!p) return;
-
     const note = prompt("Nota del marcador (opcional):", "") ?? "";
-    applyProjectUpdate(
-      (proj) => {
-        const m = {
-          round: proj.round || 1,
-          stitch: proj.stitch || 0,
-          note: note.trim(),
-          at: Date.now(),
-        };
-        proj.markers ||= [];
-        proj.markers.unshift(m);
-        proj.updatedAt = Date.now();
-        pushUndo(proj, { type: "markers_restore", value: structuredClone(proj.markers.slice(1)) }); // restore without new
-      },
-      null,
-      `Marcador añadido (V${p.round} · ${p.stitch})`
-    );
+
+    applyProjectUpdate((proj) => {
+      const prev = structuredClone(proj.markers);
+      proj.markers.unshift({
+        round: proj.round || 1,
+        stitch: proj.stitch || 0,
+        note: note.trim(),
+        at: Date.now(),
+      });
+      pushUndo(proj, { type: "markers_restore", value: prev });
+    }, `Marcador añadido (V${p.round} · ${p.stitch})`);
   }
 
   function clearMarkers() {
     const p = getActiveProject();
-    if (!p) return;
-    const ok = confirm("¿Borrar todos los marcadores?");
-    if (!ok) return;
-
+    if (!p || !confirm("¿Borrar todos los marcadores?")) return;
     const prev = structuredClone(p.markers || []);
-    applyProjectUpdate(
-      (proj) => { proj.markers = []; proj.updatedAt = Date.now(); },
-      { type: "markers_restore", value: prev },
-      "Marcadores borrados"
-    );
+    applyProjectUpdate((proj) => {
+      proj.markers = [];
+      pushUndo(proj, { type: "markers_restore", value: prev });
+    }, "Marcadores borrados");
   }
 
-  // ---------- Events ----------
   formNewProject.addEventListener("submit", (e) => {
     e.preventDefault();
     createProject(projectName.value);
@@ -476,8 +412,7 @@
   });
 
   btnClearAll.addEventListener("click", () => {
-    const ok = confirm("¿Borrar TODOS los proyectos?");
-    if (!ok) return;
+    if (!confirm("¿Borrar TODOS los proyectos?")) return;
     state = structuredClone(defaultState);
     saveState();
     renderHome();
@@ -498,12 +433,10 @@
 
   inputTotalStitches.addEventListener("change", (e) => setTotalStitches(e.target.value));
   inputNotes.addEventListener("change", (e) => setNotes(e.target.value));
+  inputAutoRound.addEventListener("change", (e) => setAutoRound(e.target.checked));
 
-  // Teclas rápidas (PC)
   window.addEventListener("keydown", (e) => {
-    const inProject = !viewProject.hidden;
-    if (!inProject) return;
-
+    if (viewProject.hidden) return;
     if (e.key === "ArrowUp") { e.preventDefault(); bumpStitch(+1); }
     if (e.key === "ArrowDown") { e.preventDefault(); bumpStitch(-1); }
     if (e.key === "ArrowRight") { e.preventDefault(); bumpRound(+1); }
@@ -511,13 +444,7 @@
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
   });
 
-  // ---------- Boot ----------
   let state = loadState();
-
-  // Si no hay proyectos, muestra Home, si hay y había uno activo, abre ese.
-  if (state.activeProjectId && getActiveProject()) {
-    showProject(state.activeProjectId);
-  } else {
-    showHome();
-  }
+  if (state.activeProjectId && getActiveProject()) showProject(state.activeProjectId);
+  else showHome();
 })();
