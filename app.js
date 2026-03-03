@@ -96,6 +96,7 @@
   const inputTechniques = $("#inputTechniques");
 
   const roundPlanSummary = $("#roundPlanSummary");
+  const inputRoundPlanRound = $("#inputRoundPlanRound");
   const inputRoundTarget = $("#inputRoundTarget");
   const inputRoundMode = $("#inputRoundMode");
   const inputRoundIncrease = $("#inputRoundIncrease");
@@ -130,6 +131,14 @@
     project.roundSummaries ||= [];
     if (!Array.isArray(project.roundSummaries)) project.roundSummaries = [];
     project.status ||= "pending";
+    if (!Number.isInteger(project.planEditorRound) || project.planEditorRound < 1) {
+      project.planEditorRound = typeof project.round === "number" && project.round > 0 ? project.round : 1;
+    }
+  }
+
+  function getPlanEditorRound(project) {
+    ensureProjectShape(project);
+    return clampInt(project.planEditorRound || 1, 1, 999999);
   }
 
   function getRoundPlanEntry(project, round) {
@@ -263,6 +272,8 @@
     const total = getEffectiveTotal(p);
     const stitch = typeof p.stitch === "number" ? p.stitch : 0;
     const roundEntry = getRoundPlanEntry(p, round);
+    const planRound = getPlanEditorRound(p);
+    const planEntry = getRoundPlanEntry(p, planRound);
 
     inputTotalStitches.value = String(typeof p.totalStitches === "number" ? p.totalStitches : 0);
     inputNotes.value = p.notes || "";
@@ -274,20 +285,21 @@
     inputMeasurements.value = p.projectSpecs.measurements || "";
     inputTechniques.value = p.projectSpecs.techniques || "";
 
-    inputRoundTarget.value = String(roundEntry?.targetStitches || "");
-    inputRoundMode.value = roundEntry?.mode || "";
-    inputRoundIncrease.value = roundEntry?.increase || "";
-    inputRoundDecrease.value = roundEntry?.decrease || "";
-    inputRoundPattern.value = roundEntry?.pattern || "";
+    inputRoundPlanRound.value = String(planRound);
+    inputRoundTarget.value = String(planEntry?.targetStitches || "");
+    inputRoundMode.value = planEntry?.mode || "";
+    inputRoundIncrease.value = planEntry?.increase || "";
+    inputRoundDecrease.value = planEntry?.decrease || "";
+    inputRoundPattern.value = planEntry?.pattern || "";
 
     const summaryParts = [];
-    if (roundEntry?.targetStitches) summaryParts.push(`${roundEntry.targetStitches} puntos`);
-    if (roundEntry?.increase) summaryParts.push(`Aum: ${roundEntry.increase}`);
-    if (roundEntry?.decrease) summaryParts.push(`Dism: ${roundEntry.decrease}`);
-    if (roundEntry?.mode) summaryParts.push(`Modo: ${roundEntry.mode}`);
+    if (planEntry?.targetStitches) summaryParts.push(`${planEntry.targetStitches} puntos`);
+    if (planEntry?.increase) summaryParts.push(`Aum: ${planEntry.increase}`);
+    if (planEntry?.decrease) summaryParts.push(`Dism: ${planEntry.decrease}`);
+    if (planEntry?.mode) summaryParts.push(`Modo: ${planEntry.mode}`);
     roundPlanSummary.textContent = summaryParts.length
-      ? `Vuelta ${round}: ${summaryParts.join(" · ")}`
-      : `Vuelta ${round}: sin plan guardado. Define puntos y patrón para avanzar con seguridad.`;
+      ? `Vuelta ${planRound}: ${summaryParts.join(" · ")}`
+      : `Vuelta ${planRound}: sin plan guardado. Define puntos y patrón para avanzar con seguridad.`;
 
     roundValue.textContent = String(round);
     stitchValue.textContent = String(stitch);
@@ -390,6 +402,7 @@
       },
       roundPlan: [],
       roundSummaries: [],
+      planEditorRound: 1,
       undoStack: [],
       history: [],
       createdAt: Date.now(),
@@ -504,13 +517,24 @@
     }, `Ficha actualizada: ${field}`);
   }
 
-  function setRoundPlanForCurrentRound(patch) {
+  function setPlanEditorRound(value) {
+    const n = Number(value);
+    const clean = Number.isFinite(n) ? clampInt(Math.floor(n), 1, 999999) : 1;
+
+    applyProjectUpdate((proj) => {
+      ensureProjectShape(proj);
+      pushUndo(proj, { type: "set", prev: { planEditorRound: proj.planEditorRound } });
+      proj.planEditorRound = clean;
+    }, `Editor de plan: vuelta ${clean}`);
+  }
+
+  function setRoundPlanForEditorRound(patch) {
     const p = getActiveProject();
     if (!p) return;
 
     applyProjectUpdate((proj) => {
       ensureProjectShape(proj);
-      const round = proj.round || 1;
+      const round = getPlanEditorRound(proj);
       const idx = proj.roundPlan.findIndex((entry) => entry.round === round);
       const prev = structuredClone(proj.roundPlan);
       const current = idx >= 0
@@ -630,15 +654,16 @@
   inputMeasurements.addEventListener("change", (e) => setProjectSpec("measurements", e.target.value));
   inputTechniques.addEventListener("change", (e) => setProjectSpec("techniques", e.target.value));
 
+  inputRoundPlanRound.addEventListener("change", (e) => setPlanEditorRound(e.target.value));
   inputRoundTarget.addEventListener("change", (e) => {
     const n = Number(e.target.value);
     const target = Number.isFinite(n) ? clampInt(Math.floor(n), 0, 999999) : 0;
-    setRoundPlanForCurrentRound({ targetStitches: target });
+    setRoundPlanForEditorRound({ targetStitches: target });
   });
-  inputRoundMode.addEventListener("change", (e) => setRoundPlanForCurrentRound({ mode: String(e.target.value || "") }));
-  inputRoundIncrease.addEventListener("change", (e) => setRoundPlanForCurrentRound({ increase: String(e.target.value || "").trim() }));
-  inputRoundDecrease.addEventListener("change", (e) => setRoundPlanForCurrentRound({ decrease: String(e.target.value || "").trim() }));
-  inputRoundPattern.addEventListener("change", (e) => setRoundPlanForCurrentRound({ pattern: String(e.target.value || "").trim() }));
+  inputRoundMode.addEventListener("change", (e) => setRoundPlanForEditorRound({ mode: String(e.target.value || "") }));
+  inputRoundIncrease.addEventListener("change", (e) => setRoundPlanForEditorRound({ increase: String(e.target.value || "").trim() }));
+  inputRoundDecrease.addEventListener("change", (e) => setRoundPlanForEditorRound({ decrease: String(e.target.value || "").trim() }));
+  inputRoundPattern.addEventListener("change", (e) => setRoundPlanForEditorRound({ pattern: String(e.target.value || "").trim() }));
 
   window.addEventListener("keydown", (e) => {
     if (viewProject.hidden) return;
