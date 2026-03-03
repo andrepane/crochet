@@ -28,23 +28,22 @@
   <main class="container">
     <section id="viewHome" class="view">
       <div class="card">
-        <h2>Crea tu proyecto</h2>
-        <p class="muted">Pantalla rápida pensada para usar con una mano mientras tejes.</p>
-
-        <form id="formNewProject" class="row" autocomplete="off">
-          <input class="input" id="projectName" type="text" placeholder="Ej: Conejo rosa" />
-          <button class="btn primary" type="submit">Crear</button>
-        </form>
-      </div>
-
-      <div class="card">
         <div class="row space-between">
           <h3>Mis proyectos</h3>
           <button class="btn ghost" id="btnClearAll" type="button">Borrar todo</button>
         </div>
+        <p class="muted">Al abrir la app, verás solo la lista de proyectos.</p>
         <div id="projectList" class="list"></div>
         <p id="emptyProjects" class="muted" hidden>No hay proyectos todavía.</p>
       </div>
+
+      <details class="card compact">
+        <summary>+ Crear nuevo proyecto</summary>
+        <form id="formNewProject" class="row" autocomplete="off">
+          <input class="input" id="projectName" type="text" placeholder="Ej: Conejo rosa" />
+          <button class="btn primary" type="submit">Crear</button>
+        </form>
+      </details>
     </section>
 
     <section id="viewProject" class="view" hidden>
@@ -54,83 +53,18 @@
             <h2 id="projectTitle">Proyecto</h2>
             <p class="muted" id="projectMeta">Ritmo rápido para contar sin pensar.</p>
           </div>
-          <button class="btn danger" id="btnDeleteProject" type="button">Eliminar</button>
-        </div>
-
-        <div class="grid two">
-          <label class="field">
-            <span class="label">Puntos por vuelta</span>
-            <input class="input" id="inputTotalStitches" type="number" min="0" step="1" />
-          </label>
-
-          <label class="field">
-            <span class="label">Notas</span>
-            <input class="input" id="inputNotes" type="text" placeholder="Hilo, aguja, patrón..." />
-          </label>
-        </div>
-
-        <label class="toggle">
-          <input id="inputAutoRound" type="checkbox" />
-          <span>Auto-vuelta: al completar puntos, pasa de vuelta automáticamente</span>
-        </label>
-
-        <h3>Ficha del proyecto (recomendado)</h3>
-        <div class="grid two">
-          <label class="field">
-            <span class="label">Aguja</span>
-            <input class="input" id="inputHookSize" type="text" placeholder="Ej: 3.5 mm" />
-          </label>
-          <label class="field">
-            <span class="label">Hilo</span>
-            <input class="input" id="inputYarn" type="text" placeholder="Marca, grosor y color" />
-          </label>
-          <label class="field">
-            <span class="label">Tensión / muestra</span>
-            <input class="input" id="inputGauge" type="text" placeholder="Ej: 18 pb x 20 vtas = 10cm" />
-          </label>
-          <label class="field">
-            <span class="label">Medidas objetivo</span>
-            <input class="input" id="inputMeasurements" type="text" placeholder="Ej: alto 20cm" />
-          </label>
-          <label class="field span-2">
-            <span class="label">Materiales y técnicas</span>
-            <input class="input" id="inputTechniques" type="text" placeholder="Relleno, ojos de seguridad, BLO/FLO, cambios de color..." />
-          </label>
+          <div class="row">
+            <button class="btn" id="btnToggleFinished" type="button">Marcar terminado</button>
+            <button class="btn danger" id="btnDeleteProject" type="button">Eliminar</button>
+          </div>
         </div>
       </div>
 
-      <div class="card compact">
-        <h3>Plan por vuelta</h3>
-        <p class="muted" id="roundPlanSummary">Define la vuelta actual para saber puntos, aumentos y forma de tejer.</p>
-
-        <div class="grid two">
-          <label class="field">
-            <span class="label">Puntos objetivo en esta vuelta</span>
-            <input class="input" id="inputRoundTarget" type="number" min="0" step="1" />
-          </label>
-          <label class="field">
-            <span class="label">Tipo de trabajo</span>
-            <select class="input" id="inputRoundMode">
-              <option value="">Sin definir</option>
-              <option value="espiral">Espiral</option>
-              <option value="redondo">En redondo (cerrando vuelta)</option>
-              <option value="recto">Recto (ida y vuelta)</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="label">Aumentos</span>
-            <input class="input" id="inputRoundIncrease" type="text" placeholder="Ej: 1 aum cada 3 puntos" />
-          </label>
-          <label class="field">
-            <span class="label">Disminuciones</span>
-            <input class="input" id="inputRoundDecrease" type="text" placeholder="Ej: 1 dism cada 4 puntos" />
-          </label>
-          <label class="field span-2">
-            <span class="label">Patrón de la vuelta</span>
-            <textarea class="input" id="inputRoundPattern" rows="3" placeholder="Ej: (2 pb, 1 aum) x 6"></textarea>
-          </label>
-        </div>
-      </div>
+      <details class="card compact" open>
+        <summary>Resumen al iniciar/reanudar</summary>
+        <p class="muted" id="roundSummaryMeta">Aquí verás el estado general del proyecto.</p>
+        <div id="roundSummaryList" class="history"></div>
+      </details>
 
       <div class="card counter-main">
         <div class="counter-head">
@@ -164,7 +98,86 @@
       </div>
 
       <details class="card compact">
-        <summary>Marcadores e historial</summary>
+        <summary>Ajustes esenciales</summary>
+        <div class="grid two">
+          <label class="field">
+            <span class="label">Puntos base por vuelta</span>
+            <input class="input" id="inputTotalStitches" type="number" min="0" step="1" />
+          </label>
+
+          <label class="field">
+            <span class="label">Notas</span>
+            <input class="input" id="inputNotes" type="text" placeholder="Hilo, aguja, patrón..." />
+          </label>
+        </div>
+
+        <label class="toggle">
+          <input id="inputAutoRound" type="checkbox" />
+          <span>Auto-vuelta: al completar puntos, pasa de vuelta automáticamente</span>
+        </label>
+      </details>
+
+      <details class="card compact">
+        <summary>Plan de vuelta (mostrar más)</summary>
+        <p class="muted" id="roundPlanSummary">Define la vuelta actual para saber puntos, aumentos y forma de tejer.</p>
+
+        <div class="grid two">
+          <label class="field">
+            <span class="label">Puntos objetivo en esta vuelta</span>
+            <input class="input" id="inputRoundTarget" type="number" min="0" step="1" />
+          </label>
+          <label class="field">
+            <span class="label">Tipo de trabajo</span>
+            <select class="input" id="inputRoundMode">
+              <option value="">Sin definir</option>
+              <option value="espiral">Espiral</option>
+              <option value="redondo">En redondo (cerrando vuelta)</option>
+              <option value="recto">Recto (ida y vuelta)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="label">Aumentos</span>
+            <input class="input" id="inputRoundIncrease" type="text" placeholder="Ej: 1 aum cada 3 puntos" />
+          </label>
+          <label class="field">
+            <span class="label">Disminuciones</span>
+            <input class="input" id="inputRoundDecrease" type="text" placeholder="Ej: 1 dism cada 4 puntos" />
+          </label>
+          <label class="field span-2">
+            <span class="label">Patrón de la vuelta</span>
+            <textarea class="input" id="inputRoundPattern" rows="3" placeholder="Ej: (2 pb, 1 aum) x 6"></textarea>
+          </label>
+        </div>
+      </details>
+
+      <details class="card compact">
+        <summary>Ficha del proyecto (mostrar más)</summary>
+        <div class="grid two">
+          <label class="field">
+            <span class="label">Aguja</span>
+            <input class="input" id="inputHookSize" type="text" placeholder="Ej: 3.5 mm" />
+          </label>
+          <label class="field">
+            <span class="label">Hilo</span>
+            <input class="input" id="inputYarn" type="text" placeholder="Marca, grosor y color" />
+          </label>
+          <label class="field">
+            <span class="label">Tensión / muestra</span>
+            <input class="input" id="inputGauge" type="text" placeholder="Ej: 18 pb x 20 vtas = 10cm" />
+          </label>
+          <label class="field">
+            <span class="label">Medidas objetivo</span>
+            <input class="input" id="inputMeasurements" type="text" placeholder="Ej: alto 20cm" />
+          </label>
+          <label class="field span-2">
+            <span class="label">Materiales y técnicas</span>
+            <input class="input" id="inputTechniques" type="text" placeholder="Relleno, ojos de seguridad, BLO/FLO, cambios de color..." />
+          </label>
+        </div>
+      </details>
+
+      <details class="card compact">
+        <summary>Marcadores e historial (mostrar más)</summary>
 
         <h3>Marcadores</h3>
         <div id="markers" class="markers"></div>

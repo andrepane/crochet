@@ -1,5 +1,5 @@
 (() => {
-  const STORAGE_KEY = "crochet_counter_v02";
+  const STORAGE_KEY = "crochet_counter_v03";
 
   const $ = (sel) => document.querySelector(sel);
   const clampInt = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -22,6 +22,7 @@
       if (!parsed || typeof parsed !== "object") return structuredClone(defaultState);
       parsed.projects ||= [];
       if (!Array.isArray(parsed.projects)) parsed.projects = [];
+      for (const project of parsed.projects) ensureProjectShape(project);
       return parsed;
     } catch {
       return structuredClone(defaultState);
@@ -80,6 +81,10 @@
   const projectTitle = $("#projectTitle");
   const projectMeta = $("#projectMeta");
   const btnDeleteProject = $("#btnDeleteProject");
+  const btnToggleFinished = $("#btnToggleFinished");
+
+  const roundSummaryMeta = $("#roundSummaryMeta");
+  const roundSummaryList = $("#roundSummaryList");
 
   const inputTotalStitches = $("#inputTotalStitches");
   const inputNotes = $("#inputNotes");
@@ -122,6 +127,9 @@
     project.projectSpecs ||= { hookSize: "", yarn: "", gauge: "", measurements: "", techniques: "" };
     project.roundPlan ||= [];
     if (!Array.isArray(project.roundPlan)) project.roundPlan = [];
+    project.roundSummaries ||= [];
+    if (!Array.isArray(project.roundSummaries)) project.roundSummaries = [];
+    project.status ||= "pending";
   }
 
   function getRoundPlanEntry(project, round) {
@@ -129,10 +137,38 @@
     return project.roundPlan.find((entry) => entry.round === round) || null;
   }
 
+  function getRoundSummaryEntry(project, round) {
+    ensureProjectShape(project);
+    return project.roundSummaries.find((entry) => entry.round === round) || null;
+  }
+
+  function upsertRoundSummary(project, round, patch = {}) {
+    ensureProjectShape(project);
+    const idx = project.roundSummaries.findIndex((entry) => entry.round === round);
+    const current = idx >= 0
+      ? { ...project.roundSummaries[idx] }
+      : { round, finalStitches: 0, pattern: "", updatedAt: Date.now() };
+
+    if (Object.hasOwn(patch, "finalStitches")) current.finalStitches = patch.finalStitches;
+    if (Object.hasOwn(patch, "pattern")) current.pattern = patch.pattern;
+    current.updatedAt = Date.now();
+
+    if (idx >= 0) project.roundSummaries[idx] = current;
+    else project.roundSummaries.push(current);
+
+    project.roundSummaries.sort((a, b) => a.round - b.round);
+  }
+
   function getEffectiveTotal(project) {
     const entry = getRoundPlanEntry(project, project.round || 1);
     if (entry && typeof entry.targetStitches === "number" && entry.targetStitches > 0) return entry.targetStitches;
     return typeof project.totalStitches === "number" ? project.totalStitches : 0;
+  }
+
+  function getProjectProgressState(project) {
+    if (project.status === "done") return "terminado";
+    const started = (project.round || 1) > 1 || (project.stitch || 0) > 0 || (project.history?.length || 0) > 0;
+    return started ? "empezado" : "por empezar";
   }
 
   function showHome() {
@@ -162,6 +198,7 @@
     emptyProjects.hidden = list.length !== 0;
 
     for (const p of list) {
+      ensureProjectShape(p);
       const el = document.createElement("div");
       el.className = "project-item";
 
@@ -174,10 +211,10 @@
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      const total = typeof p.totalStitches === "number" ? p.totalStitches : 0;
+      const stateText = getProjectProgressState(p);
       const r = typeof p.round === "number" ? p.round : 1;
       const s = typeof p.stitch === "number" ? p.stitch : 0;
-      meta.textContent = `Vuelta ${r} · Punto ${s}/${total}`;
+      meta.textContent = `${stateText.toUpperCase()} · Vuelta ${r} · Punto ${s}`;
 
       left.appendChild(name);
       left.appendChild(meta);
@@ -188,7 +225,7 @@
       const btnOpen = document.createElement("button");
       btnOpen.className = "btn primary";
       btnOpen.type = "button";
-      btnOpen.textContent = "Abrir";
+      btnOpen.textContent = stateText === "por empezar" ? "Empezar" : "Reanudar";
       btnOpen.addEventListener("click", () => showProject(p.id));
 
       const btnDel = document.createElement("button");
@@ -216,9 +253,11 @@
     if (!p) return showHome();
     ensureProjectShape(p);
 
-    subtitle.textContent = "Contador rápido";
+    subtitle.textContent = "Proyecto";
     projectTitle.textContent = p.name || "Proyecto";
-    projectMeta.textContent = p.notes ? `Notas: ${p.notes}` : "Toques grandes para contar rápido.";
+    const stateText = getProjectProgressState(p);
+    projectMeta.textContent = `Estado: ${stateText}${p.notes ? ` · ${p.notes}` : ""}`;
+    btnToggleFinished.textContent = p.status === "done" ? "Marcar activo" : "Marcar terminado";
 
     const round = typeof p.round === "number" ? p.round : 1;
     const total = getEffectiveTotal(p);
@@ -259,6 +298,19 @@
     progressText.textContent = total > 0
       ? `${percent}% completado${roundEntry?.pattern ? ` · ${roundEntry.pattern}` : ""}`
       : "Define puntos por vuelta o un plan por vuelta para ver progreso";
+
+    const summaryList = (p.roundSummaries || []).slice().sort((a, b) => a.round - b.round);
+    roundSummaryList.innerHTML = "";
+    roundSummaryMeta.textContent = summaryList.length
+      ? `Resumen de ${summaryList.length} vuelta(s) registrada(s).`
+      : "Todavía no hay vueltas guardadas. Se irán registrando automáticamente.";
+    for (const row of summaryList) {
+      const div = document.createElement("div");
+      div.className = "history-item";
+      const pattern = row.pattern ? row.pattern : "Sin patrón guardado";
+      div.textContent = `Vuelta ${row.round}: ${row.finalStitches || 0} puntos finales · Patrón: ${pattern}`;
+      roundSummaryList.appendChild(div);
+    }
 
     const list = Array.isArray(p.markers) ? p.markers : [];
     markers.innerHTML = "";
@@ -328,6 +380,7 @@
       autoRound: true,
       markers: [],
       notes: "",
+      status: "pending",
       projectSpecs: {
         hookSize: "",
         yarn: "",
@@ -336,6 +389,7 @@
         techniques: "",
       },
       roundPlan: [],
+      roundSummaries: [],
       undoStack: [],
       history: [],
       createdAt: Date.now(),
@@ -343,7 +397,7 @@
     };
     state.projects.push(p);
     saveState();
-    showProject(p.id);
+    renderHome();
   }
 
   function deleteActiveProject() {
@@ -357,15 +411,24 @@
 
   function resetActiveProject() {
     const p = getActiveProject();
-    if (!p || !confirm("¿Reiniciar contadores, marcadores e historial de este proyecto?")) return;
+    if (!p || !confirm("¿Reiniciar contadores, marcadores, historial y resumen de vueltas de este proyecto?")) return;
 
     applyProjectUpdate((proj) => {
       proj.round = 1;
       proj.stitch = 0;
       proj.markers = [];
       proj.history = [];
+      proj.roundSummaries = [];
       proj.undoStack = [];
+      proj.status = "pending";
     }, null);
+  }
+
+  function toggleFinished() {
+    applyProjectUpdate((proj) => {
+      pushUndo(proj, { type: "set", prev: { status: proj.status } });
+      proj.status = proj.status === "done" ? "in_progress" : "done";
+    }, "Estado del proyecto actualizado");
   }
 
   function undo() {
@@ -383,11 +446,23 @@
     vibrate();
   }
 
+  function saveCurrentRoundSnapshot(project) {
+    const round = project.round || 1;
+    const plan = getRoundPlanEntry(project, round);
+    upsertRoundSummary(project, round, {
+      finalStitches: project.stitch || 0,
+      pattern: plan?.pattern || getRoundSummaryEntry(project, round)?.pattern || "",
+    });
+  }
+
   function bumpRound(delta) {
     applyProjectUpdate((proj) => {
-      pushUndo(proj, { type: "set", prev: { round: proj.round, stitch: proj.stitch } });
+      saveCurrentRoundSnapshot(proj);
+      pushUndo(proj, { type: "set", prev: { round: proj.round, stitch: proj.stitch, roundSummaries: structuredClone(proj.roundSummaries) } });
       proj.round = clampInt((proj.round || 1) + delta, 1, 999999);
       proj.stitch = 0;
+      proj.status = "in_progress";
+      saveCurrentRoundSnapshot(proj);
     }, delta > 0 ? "Vuelta +1 (puntos a 0)" : "Vuelta -1 (puntos a 0)");
     vibrate();
   }
@@ -398,18 +473,24 @@
 
     applyProjectUpdate((proj) => {
       const total = getEffectiveTotal(proj);
-      pushUndo(proj, { type: "set", prev: { stitch: proj.stitch, round: proj.round } });
+      pushUndo(proj, { type: "set", prev: { stitch: proj.stitch, round: proj.round, roundSummaries: structuredClone(proj.roundSummaries) } });
 
       if (delta > 0 && total > 0 && proj.autoRound) {
         const sum = (proj.stitch || 0) + delta;
         const addRounds = Math.floor((sum - 1) / total);
         const newStitch = ((sum - 1) % total) + 1;
-        if (addRounds > 0) proj.round = clampInt((proj.round || 1) + addRounds, 1, 999999);
+        if (addRounds > 0) {
+          saveCurrentRoundSnapshot(proj);
+          proj.round = clampInt((proj.round || 1) + addRounds, 1, 999999);
+        }
         proj.stitch = newStitch;
       } else {
         const max = total > 0 ? total : 999999;
         proj.stitch = clampInt((proj.stitch || 0) + delta, 0, max);
       }
+
+      proj.status = "in_progress";
+      saveCurrentRoundSnapshot(proj);
     }, delta > 0 ? "Punto +1" : "Punto -1");
     vibrate();
   }
@@ -455,6 +536,7 @@
       pushUndo(proj, { type: "set", prev: { roundPlan: prev } });
       const max = getEffectiveTotal(proj);
       if (max > 0) proj.stitch = clampInt(proj.stitch || 0, 0, max);
+      if (Object.hasOwn(patch, "pattern")) upsertRoundSummary(proj, round, { pattern: current.pattern });
     }, "Plan de vuelta actualizado");
   }
 
@@ -466,6 +548,7 @@
       pushUndo(proj, { type: "set", prev: { totalStitches: proj.totalStitches, stitch: proj.stitch } });
       proj.totalStitches = clean;
       if (clean > 0) proj.stitch = clampInt(proj.stitch || 0, 0, clean);
+      saveCurrentRoundSnapshot(proj);
     }, `Total puntos por vuelta: ${clean}`);
   }
 
@@ -527,6 +610,7 @@
   btnBack.addEventListener("click", showHome);
   btnDeleteProject.addEventListener("click", deleteActiveProject);
   btnResetProject.addEventListener("click", resetActiveProject);
+  btnToggleFinished.addEventListener("click", toggleFinished);
 
   btnUndo.addEventListener("click", undo);
   btnAddMarker.addEventListener("click", addMarker);
@@ -566,6 +650,5 @@
   });
 
   let state = loadState();
-  if (state.activeProjectId && getActiveProject()) showProject(state.activeProjectId);
-  else showHome();
+  showHome();
 })();
